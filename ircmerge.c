@@ -4,11 +4,12 @@
 #include <errno.h>
 #include <time.h>
 
-#define BUFFER_LENGTH 1024
-#define DATE_BUFFER_LENGTH 20
-#define DATE_OFFSET 15
-#define DATE_FORMAT "%a %b %d %H:%M:%S %Y"
+#define BUFFER_LENGTH      1024
+#define DATE_BUFFER_LENGTH 42
+#define DATE_OFFSET        15
+#define DATE_FORMAT        "%a %b %d %H:%M:%S %Y"
 
+int copy_log(FILE*, FILE*, char* buffer);
 double compare_headers(const char*, const char*);
 time_t to_seconds(const char*, const char*);
 
@@ -28,22 +29,55 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Get the log headers containing starting dates & time
     fscanf(src0, "%[^\n]", buffer0);
+    getc(src0);  // Get the '\n' at the EOL and throw it away
     fscanf(src1, "%[^\n]", buffer1);
+    getc(src1);  // Get the '\n' at the EOL and throw it away
 
-    double res = compare_headers(buffer0, buffer1);
+    while (1) {
+        double res = compare_headers(buffer0, buffer1);
 
-    if (res > 0)
-        fprintf(dest, "%s started earlier than %s\n", argv[1], argv[2]);
-    else if (res < 0)
-        fprintf(dest, "%s started earlier than %s\n", argv[2], argv[1]);
-    else
-        fprintf(dest, "Log files started together\n");
+        if (res > 0) {
+            fprintf(dest, "%s\n", buffer0);
+            if (!copy_log(src0, dest, buffer0))
+                break;  // EOF in copy_log()
+
+        } else if (res < 0) {
+            fprintf(dest, "%s\n", buffer1);
+            if (!copy_log(src1, dest, buffer1))
+                break;  // EOF in copy_log()
+
+        } else
+            fprintf(stderr, "Log files started together\n");
+    }
 
     fclose(src0);
     fclose(src1);
 
     return 0;
+}
+
+int copy_log(FILE* src, FILE* dest, char* buffer) {
+    int rets;  // Used to determine which failing condition caused the while() loop below to break
+
+    while ((rets = fscanf(src, "%[^\n]", buffer)) != EOF) {
+        getc(src);  // Get the '\n' at the EOL and throw it away
+        if (!strncmp(buffer, "--- L", 5)) break;  // Log closed or opened again
+        fprintf(dest, "%s\n", buffer);
+    }
+
+    if (rets == EOF) return 0;
+
+    if (!strncmp(buffer, "--- Log c", 9)) {  // If 'Log closed',
+        fprintf(dest, "%s\n", buffer);  // write it out, and get the next line which should say
+        if ((rets = fscanf(src, "%[^\n]", buffer)) == EOF)  // 'Log opened'
+            return 0;                                // but return 0 on EOF
+        else getc(src);  // Get the '\n' at the EOL and throw it away
+
+    }  // `buffer` should hold in it the next log header with date & time.
+
+    return 1;
 }
 
 double compare_headers(const char* head0, const char* head1) {
