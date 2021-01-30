@@ -18,6 +18,11 @@ int main(int argc, char* argv[]) {
     char buffer0[BUFFER_LENGTH];  // Line or Message Buffer for Source 0 file
     char buffer1[BUFFER_LENGTH];  // Line or Message Buffer for Source 1 file
 
+    if (argc != 3) {
+        fprintf(stderr, "Usage: %s first_log_file second_log_file\n", argv[0]);
+        return 1;
+    }
+
     if ((src0 = fopen(argv[1], "r")) == NULL) {
         perror(argv[1]);
         return 1;
@@ -71,9 +76,10 @@ int copy_log(FILE* src, FILE* dest, char* buffer) {
 
     if (!strncmp(buffer, "--- Log c", 9)) {  // If 'Log closed',
         fprintf(dest, "%s\n", buffer);  // write it out, and get the next line which should say
-        if ((rets = fscanf(src, "%[^\n]", buffer)) == EOF)  // 'Log opened'
-            return 0;                                // but return 0 on EOF
-        else getc(src);  // Get the '\n' at the EOL and throw it away
+        if (fscanf(src, "%[^\n]", buffer) == EOF)  // 'Log opened'
+            return 0;                              // but return 0 on EOF
+
+        getc(src);  // Get the '\n' at the EOL and throw it away
 
     }  // `buffer` should hold in it the next log header with date & time.
 
