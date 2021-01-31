@@ -9,7 +9,8 @@
 #define DATE_OFFSET        15
 #define DATE_FORMAT        "%a %b %d %H:%M:%S %Y"
 
-int copy_log(FILE*, FILE*, char* buffer);
+int copy_logblock(FILE*, FILE*, char* buffer);
+void copy_log(FILE*, FILE*, char* buffer);
 double compare_headers(const char*, const char*);
 time_t to_seconds(const char*, const char*);
 
@@ -44,14 +45,22 @@ int main(int argc, char* argv[]) {
         double res = compare_headers(buffer0, buffer1);
 
         if (res > 0) {
-            fprintf(dest, "%s\n", buffer0);
-            if (!copy_log(src0, dest, buffer0))
-                break;  // EOF in copy_log()
+            fprintf(dest, "%s\n", buffer0);  // TODO: Should this be taken care of by copy_log[block]()?
+
+            if (!copy_logblock(src0, dest, buffer0)) {  // EOF in copy_logblock()
+                fprintf(dest, "%s\n", buffer1);  // Proceed to print the pending header from src1
+                copy_log(src1, dest, buffer1);  // And then the rest of src1
+                break;  // exit
+            }
 
         } else if (res < 0) {
             fprintf(dest, "%s\n", buffer1);
-            if (!copy_log(src1, dest, buffer1))
-                break;  // EOF in copy_log()
+
+            if (!copy_logblock(src1, dest, buffer1)) {  // EOF in copy_logblock()
+                fprintf(dest, "%s\n", buffer0);  // Proceed to print the pending header from src0
+                copy_log(src0, dest, buffer0);  // And then the rest of src0
+                break;  // exit
+            }
 
         } else
             fprintf(stderr, "Log files started together\n");
@@ -63,7 +72,7 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-int copy_log(FILE* src, FILE* dest, char* buffer) {
+int copy_logblock(FILE* src, FILE* dest, char* buffer) {
     int rets;  // Used to determine which failing condition caused the while() loop below to break
 
     while ((rets = fscanf(src, "%[^\n]", buffer)) != EOF) {
@@ -84,6 +93,13 @@ int copy_log(FILE* src, FILE* dest, char* buffer) {
     }  // `buffer` should hold in it the next log header with date & time.
 
     return 1;
+}
+
+void copy_log(FILE* src, FILE* dest, char* buffer) {
+    while (fscanf(src, "%[^\n]", buffer) != EOF) {
+        getc(src);  // Get the '\n' at the EOL and throw it away
+        fprintf(dest, "%s\n", buffer);
+    }
 }
 
 double compare_headers(const char* head0, const char* head1) {
