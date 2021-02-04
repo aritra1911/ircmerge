@@ -11,31 +11,45 @@ int mergedir(const char* src_path, const char* dest_path) {
     DIR* dfd;
     struct dirent* dp;
     struct stat stbuf;
-    char path[NAME_MAX+1];
+    char src_ent[NAME_MAX+1];  // Absolute path to entity belonging to src_path
+    char dest_ent[NAME_MAX+1];  // Absolute path to entity belonging to dest_path
 
     errno = 0;  // Initialize errno
     if (!(dfd = opendir(src_path))) {
         perror("opendir");
+        errno = 0;  // Reset errno
         return -1;  // Notify caller that something went wrong!
     }
 
-    errno = 0;
+    errno = 0;  // Reset errno
     while (dp = readdir(dfd)) {
         if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
             continue;  // Skip self & parent directories
 
-        sprintf(path, "%s/%s", src_path, dp->d_name);  // TODO: Hardcoding '/'?
+        sprintf(src_ent, "%s/%s", src_path, dp->d_name);  // TODO: Hardcoding '/'?
 
-        // path holds absolute path to dp
-        if (stat(path, &stbuf) == -1) {
-            perror("stat");
+        // src_ent holds absolute path to current directory entity
+        if (stat(src_ent, &stbuf) == -1) {
+            perror("stat");  // It'll be very weird if stat() fails here
             return -1;
         }
 
-        if ((stbuf.st_mode & S_IFMT) == S_IFDIR)
-            printf("[D] %s\n", path);  // Is a directory
-        else
-            printf("[F] %s\n", path);  // Is a file
+        if ((stbuf.st_mode & S_IFMT) == S_IFDIR) {
+            // src_ent is a directory
+            sprintf(dest_ent, "%s/%s", dest_path, dp->d_name);  // TODO: Hardcoding '/'?
+
+            // If dest_ent doesn't exist, make it
+            if (mkdir(dest_ent, stbuf.st_mode) == -1) {
+                if (errno != EEXIST) {  // If it already exists, then woohoo, less work!
+                    perror("mkdir");
+                    return -1;
+                }
+
+                errno = 0;  // Reset errno
+            }
+
+        } else
+            printf("[F] %s\n", src_ent);  // Is a file
 
     }
 
