@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <string.h>
 #include <errno.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 int mergedir(const char* src_path, const char* dest_path) {
     // recursively copy src_path to dest_path, changing or making directories as needed.
@@ -8,6 +10,8 @@ int mergedir(const char* src_path, const char* dest_path) {
 
     DIR* dfd;
     struct dirent* dp;
+    struct stat stbuf;
+    char path[NAME_MAX+1];
 
     errno = 0;  // Initialize errno
     if (!(dfd = opendir(src_path))) {
@@ -17,7 +21,22 @@ int mergedir(const char* src_path, const char* dest_path) {
 
     errno = 0;
     while (dp = readdir(dfd)) {
-        printf("%s\n", dp->d_name);
+        if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
+            continue;  // Skip self & parent directories
+
+        sprintf(path, "%s/%s", src_path, dp->d_name);  // TODO: Hardcoding '/'?
+
+        // path holds absolute path to dp
+        if (stat(path, &stbuf) == -1) {
+            perror("stat");
+            return -1;
+        }
+
+        if ((stbuf.st_mode & S_IFMT) == S_IFDIR)
+            printf("[D] %s\n", path);  // Is a directory
+        else
+            printf("[F] %s\n", path);  // Is a file
+
     }
 
     if (errno) {  // If errno modified, something went wrong
