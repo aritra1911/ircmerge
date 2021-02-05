@@ -48,6 +48,7 @@ int mergedir(const char* src_path, const char* dest_path) {
                 errno = 0;  // Reset errno
             }
 
+            mergedir(src_ent , dest_ent);
         } else
             printf("[F] %s\n", src_ent);  // Is a file
 
@@ -57,6 +58,8 @@ int mergedir(const char* src_path, const char* dest_path) {
         perror("readdir");
         return -1;
     }
+
+    closedir(dfd);
 
     return 0;
 }
