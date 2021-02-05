@@ -31,6 +31,7 @@ int mergedir(const char* src_path, const char* dest_path) {
         // src_ent holds absolute path to current directory entity
         if (stat(src_ent, &stbuf) == -1) {
             perror("stat");  // It'll be very weird if stat() fails here
+            errno = 0;  // Reset errno
             return -1;
         }
 
@@ -48,7 +49,9 @@ int mergedir(const char* src_path, const char* dest_path) {
                 errno = 0;  // Reset errno
             }
 
-            mergedir(src_ent , dest_ent);
+            if (mergedir(src_ent, dest_ent) == -1)  // Recurse
+                return -1;  // but beware that it may fail. In that case, fail here as well.
+
         } else
             printf("[F] %s\n", src_ent);  // Is a file
 
@@ -56,6 +59,7 @@ int mergedir(const char* src_path, const char* dest_path) {
 
     if (errno) {  // If errno modified, something went wrong
         perror("readdir");
+        errno = 0;  // Reset errno
         return -1;
     }
 
