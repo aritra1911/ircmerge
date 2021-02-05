@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <linux/limits.h>  // For PATH_MAX, TODO: Make this platform independent
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -11,8 +12,8 @@ int mergedir(const char* src_path, const char* dest_path) {
     DIR* dfd;
     struct dirent* dp;
     struct stat stbuf;
-    char src_ent[NAME_MAX+1];  // Absolute path to entity belonging to src_path
-    char dest_ent[NAME_MAX+1];  // Absolute path to entity belonging to dest_path
+    char src_ent[PATH_MAX];  // Absolute path to entity belonging to src_path
+    char dest_ent[PATH_MAX];  // Absolute path to entity belonging to dest_path
 
     errno = 0;  // Initialize errno
     if (!(dfd = opendir(src_path))) {
@@ -22,7 +23,7 @@ int mergedir(const char* src_path, const char* dest_path) {
     }
 
     errno = 0;  // Reset errno
-    while (dp = readdir(dfd)) {
+    while ((dp = readdir(dfd))) {
         if (!strcmp(dp->d_name, ".") || !strcmp(dp->d_name, ".."))
             continue;  // Skip self & parent directories
 
@@ -35,7 +36,7 @@ int mergedir(const char* src_path, const char* dest_path) {
             return -1;
         }
 
-        if ((stbuf.st_mode & S_IFMT) == S_IFDIR) {
+        if (S_ISDIR(stbuf.st_mode)) {
             // src_ent is a directory
             sprintf(dest_ent, "%s/%s", dest_path, dp->d_name);  // TODO: Hardcoding '/'?
 
