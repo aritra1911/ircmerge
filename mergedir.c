@@ -7,7 +7,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-int mergedir(const char* src_path, const char* dest_path) {
+#define TEMP_FILENAME "temp.log"
+
+int mergedir(const char* src_path, const char* dest_path,
+             int (*merge)(const char*, const char*, const char*)) {
     // recursively copy src_path to dest_path, changing or making directories as needed.
     // TODO: In case of a conflict call a callback function that merges two files together somehow.
 
@@ -55,7 +58,7 @@ int mergedir(const char* src_path, const char* dest_path) {
                 errno = 0;  // Reset errno
             }
 
-            if (mergedir(src_ent, dest_ent) == -1) {  // Recurse
+            if (mergedir(src_ent, dest_ent, merge) == -1) {  // Recurse
                 closedir(dfd);  // but beware that it may fail.
                 return -1;  // In that case, fail here as well.
             }
@@ -78,6 +81,35 @@ int mergedir(const char* src_path, const char* dest_path) {
                 // If it already exists, don't create it again
                 // Instead, TODO: Call merging callback function here
                 printf("Merge : %s And %s\n", src_ent, dest_ent);
+
+                char temp_file[PATH_MAX];
+                sprintf(temp_file, "%s/%s", dest_path, TEMP_FILENAME);
+
+                if (merge(src_ent, dest_ent, temp_file) == -1)  // Call to provided merging callback function
+                    fprintf(stderr, "Merge failed!");
+
+                if (access(temp_file, F_OK) == -1) {
+                    // `temp_file` doesn't exist, merge failed
+                    // but don't stop here beacuse of that. Maybe the other files will get merged properly.
+                    errno = 0;  // Reset errno
+
+                } else {  //  `temp_file` exists, hence merge was successful
+                    if (unlink(dest_ent) == -1) {  // remove previous `dest_ent`
+                        perror("unlink");
+                        errno = 0;  // Reset errno
+
+                    } else {  // If successful, disguise `temp_file` as new `dest_ent`
+                        if (rename(temp_file, dest_ent) == -1) {
+                            // previous `dest_ent` doesn't exist here, if we fail to rename, we should stop.
+                            // As any successive merges will overwrite `temp_file`, but we must save it.
+
+                            perror("rename");
+                            errno = 0;  // Reset errno
+                            closedir(dfd);
+                            return -1;
+                        }
+                    }
+                }
 
             } else {  // open(dest_ent) succeeded in creating the file and we don't already have anything in it,
                       // so, copy src_ent to dest_ent.
@@ -117,6 +149,8 @@ int mergedir(const char* src_path, const char* dest_path) {
                 close(dest_fd);
             }
         }
+
+        errno = 0;  // Make sure errno is reset before the next call to `readdir()`.
     }
 
     if (errno) {  // If errno modified, something went wrong
@@ -127,12 +161,5 @@ int mergedir(const char* src_path, const char* dest_path) {
 
     closedir(dfd);
 
-    return 0;
-}
-
-// Testing only, TODO: remove
-int main(int argc, char* argv[]) {
-    if(mergedir(argv[1], argv[2]) == -1)
-        return 1;
     return 0;
 }

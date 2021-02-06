@@ -1,10 +1,16 @@
 CFLAGS=-Wall -Wextra -pedantic -std=c99
 
-ircmerge: ircmerge.o
-	$(CC) ircmerge.o -o ircmerge
+ircmerge: main.o mergedir.o mergelog.o
+	$(CC) main.o mergedir.o mergelog.o -o ircmerge
 
-ircmerge.o: ircmerge.c
-	$(CC) $(CFLAGS) -c ircmerge.c -o ircmerge.o
+main.o: main.c
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+mergedir.o: mergedir.c
+	$(CC) $(CFLAGS) -c mergedir.c -o mergedir.o
+
+mergelog.o: mergelog.c
+	$(CC) $(CFLAGS) -c mergelog.c -o mergelog.o
 
 clean:
 	$(RM) *.o ircmerge

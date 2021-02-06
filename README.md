@@ -1,5 +1,9 @@
 # IRC Merge
-Given two source `irclogs` folders and a destination folder, will merge each logfile recursively into the destination
-directory.
+Given an arbitrary number of source `irclogs` directories and a destination directory, will merge each logfile
+recursively into the destination directory.
 
-> WARNING! This project is under active development and cannot do anything right now.
+## Usage
+```sh
+$ ./ircmerge.c
+Usage: ./ircmerge source_logfile1 source_logfile2 ... source_logfileN destination_logfile
+```

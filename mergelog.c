@@ -14,25 +14,30 @@ void copy_log(FILE*, FILE*, char* buffer);
 double compare_headers(const char*, const char*);
 time_t to_seconds(const char*, const char*);
 
-int main(int argc, char* argv[]) {
-    FILE *src0, *src1, *dest=stdout;
+int mergelog(const char* src0_logfile, const char* src1_logfile, const char* dest_logfile) {
+    FILE *src0, *src1, *dest;
     char buffer0[BUFFER_LENGTH];  // Line or Message Buffer for Source 0 file
     char buffer1[BUFFER_LENGTH];  // Line or Message Buffer for Source 1 file
 
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s first_log_file second_log_file\n", argv[0]);
-        return 1;
+    if ((src0 = fopen(src0_logfile, "r")) == NULL) {
+        perror(src0_logfile);
+        errno = 0;  // Reset errno
+        return -1;
     }
 
-    if ((src0 = fopen(argv[1], "r")) == NULL) {
-        perror(argv[1]);
-        return 1;
-    }
-
-    if ((src1 = fopen(argv[2], "r")) == NULL) {
-        perror(argv[2]);
+    if ((src1 = fopen(src1_logfile, "r")) == NULL) {
+        perror(src1_logfile);
+        errno = 0;  // Reset errno
         fclose(src0);
-        return 1;
+        return -1;
+    }
+
+    if ((dest = fopen(dest_logfile, "w")) == NULL) {
+        perror(dest_logfile);
+        errno = 0;  // Reset errno
+        fclose(src1);
+        fclose(src0);
+        return -1;
     }
 
     // Get the log headers containing starting dates & time
@@ -62,12 +67,18 @@ int main(int argc, char* argv[]) {
                 break;  // exit
             }
 
-        } else
+        } else {
             fprintf(stderr, "Log files started together\n");
+            fclose(src0);
+            fclose(src1);
+            fclose(dest);
+            return -1;
+        }
     }
 
     fclose(src0);
     fclose(src1);
+    fclose(dest);
 
     return 0;
 }
