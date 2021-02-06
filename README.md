@@ -4,6 +4,6 @@ recursively into the destination directory.
 
 ## Usage
 ```sh
-$ ./ircmerge.c
+$ ./ircmerge
 Usage: ./ircmerge source_logfile1 source_logfile2 ... source_logfileN destination_logfile
 ```
