@@ -11,7 +11,8 @@ int main(int argc, char* argv[]) {
 
     if (argc < 3) {
         fprintf(stderr, "Not enough arguments!\n");
-        printf("Usage: %s source_logfile1 source_logfile2 ... source_logfileN destination_logfile\n", argv[0]);
+        printf("Usage: %s source_irclogs1 source_irclogs2 ... source_irclogsN destination_irclogs\n", argv[0]);
+        return EXIT_FAILURE;
     }
 
     for (int i = 1; i <= argc - 2; i++)

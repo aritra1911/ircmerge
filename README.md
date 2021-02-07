@@ -4,6 +4,6 @@ recursively into the destination directory.
 
 ## Usage
 ```sh
-$ ./ircmerge
-Usage: ./ircmerge source_irclog1 source_irclog2 ... source_irclogN destination_irclog
+$ ./ircmerge 2>/dev/null
+Usage: ./ircmerge source_irclogs1 source_irclogs2 ... source_irclogsN destination_irclogs
 ```
