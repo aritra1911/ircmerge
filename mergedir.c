@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -12,7 +13,7 @@
 int mergedir(const char* src_path, const char* dest_path,
              int (*merge)(const char*, const char*, const char*)) {
     // recursively copy src_path to dest_path, changing or making directories as needed.
-    // TODO: In case of a conflict call a callback function that merges two files together somehow.
+    // In case of a conflict call a callback function that merges two files together somehow.
 
     DIR* dfd;
     struct dirent* dp;
@@ -65,6 +66,9 @@ int mergedir(const char* src_path, const char* dest_path,
 
         } else {
             // src_ent is a file
+            if (strcasecmp(strrchr(dp->d_name, '.'), ".log"))
+                continue;  // If file extension isn't '.log', skip
+
             int dest_fd;
 
             // Try to create dest_ent
