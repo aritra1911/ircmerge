@@ -9,6 +9,7 @@
 #define DATE_OFFSET        15
 #define DATE_FORMAT        "%a %b %d %H:%M:%S %Y"
 
+int skip_logblock(FILE*, char* buffer);
 int copy_logblock(FILE*, FILE*, char* buffer);
 void copy_log(FILE*, FILE*, char* buffer);
 double compare_headers(const char*, const char*);
@@ -68,11 +69,42 @@ int mergelog(const char* src0_logfile, const char* src1_logfile, const char* des
             }
 
         } else {
-            fprintf(stderr, "Log files started together\n");
-            fclose(src0);
-            fclose(src1);
-            fclose(dest);
-            return -1;
+            /* If we're here, this means this log block exists on both the
+               source files. So, we shall copy this one from the src1 to dest
+               and skip this log block of src0 */
+            fprintf(dest, "%s\n", buffer1);
+
+            /* We shall report the user about this fact too */
+            /* TODO: Does the user want to know the position and date and time
+               details of that block? Could be a `--verbose' feature */
+            printf("Similar log blocks found, copying only once!\n");
+
+            /* Notice that we have an option of whether to copy src0 and skip
+             * src1 or copy src1 and skip src0. I have assumed that src1 is a
+             * more updated or recent version, but that might not be the case
+             * always.
+             * TODO : Should we count the size of a log block, compare and
+             * always copy the longer one while skipping the shorter one?
+             */
+
+            /* Skip a block on src0 */
+            if (!skip_logblock(src0, buffer0)) {
+                /* If that was the last block, then we'll copy over rest of src1
+                 * and exit */
+                copy_log(src1, dest, buffer1);
+                break;
+            }
+
+            /* Here we copy the log block from src1 to dest after skipping the
+             * same log block belonging to src0 */
+            if (!copy_logblock(src1, dest, buffer1)) {
+                /* src1 EOFed so we now copy over the rest of src0 and exit */
+
+                /* Don't forget to copy the `Log opened' line */
+                fprintf(dest, "%s\n", buffer0);
+                copy_log(src0, dest, buffer0);
+                break;
+            }
         }
     }
 
@@ -80,6 +112,42 @@ int mergelog(const char* src0_logfile, const char* src1_logfile, const char* des
     fclose(src1);
     fclose(dest);
 
+    return 0;
+}
+
+int skip_logblock(FILE* src, char* buffer) {
+    /* Moves the FILE pointer to the start of the next log block. We return 0 if
+       we encounter an EOF in the process, otherwise we return 1. */
+
+    while (fscanf(src, "%[^\n]", buffer) != EOF) {
+        getc(src);  // Get the '\n' at the EOL and throw it away
+
+        if (!strncmp(buffer, "--- L", 5)) {
+            /* Sometimes when irssi quits abnormally, it missies the line
+             * stating the `Log closed` and time information. In such a case, we
+             * may find messages contained between two `Log opened' statements,
+             * or an abrupt EOF. The above condition checks that we've
+             * encountered either a `Log opened' or a `Log closed', so we'll now
+             * take action accordingly.
+             */
+            if (!strncmp(buffer, "--- Log c", 9)) {
+                /* Since we've encounted a `Log closed' statement we'll try to
+                 * read the next line which should say `Log opened'. */
+                if (fscanf(src, "%[^\n]", buffer) == EOF) {
+                    /* but return 0 on EOF */
+                    return 0;
+                }
+                getc(src);  // Get the '\n' at the EOL and throw it away
+            }
+            /* Our aim is to keep `buffer` pointed at the next `Log opened'
+             * block, so we really don't have to check that since if it's not
+             * `Log closed', it must be `Log opened'.
+             */
+            return 1;
+        }
+    }
+
+    /* We encountered an EOF while looking for a `Log closed' */
     return 0;
 }
 

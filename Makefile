@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Wextra -pedantic -std=c99
+CFLAGS=-Wall -Wextra -pedantic -g -O0 -std=c99
 
 ircmerge: main.o mergedir.o mergelog.o
 	$(CC) main.o mergedir.o mergelog.o -o ircmerge
