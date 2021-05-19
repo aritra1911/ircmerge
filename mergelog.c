@@ -12,13 +12,14 @@
 int skip_logblock(FILE*, char* buffer);
 int copy_logblock(FILE*, FILE*, char* buffer);
 void copy_log(FILE*, FILE*, char* buffer);
-double compare_headers(const char*, const char*);
+int compare_headers(const char*, const char*, double*);
 time_t to_seconds(const char*, const char*);
 
 int mergelog(const char* src0_logfile, const char* src1_logfile, const char* dest_logfile) {
     FILE *src0, *src1, *dest;
     char buffer0[BUFFER_LENGTH];  // Line or Message Buffer for Source 0 file
     char buffer1[BUFFER_LENGTH];  // Line or Message Buffer for Source 1 file
+    double res;                   // Contain time difference of log headers
 
     if ((src0 = fopen(src0_logfile, "r")) == NULL) {
         perror(src0_logfile);
@@ -48,7 +49,23 @@ int mergelog(const char* src0_logfile, const char* src1_logfile, const char* des
     getc(src1);  // Get the '\n' at the EOL and throw it away
 
     while (1) {
-        double res = compare_headers(buffer0, buffer1);
+        /* Looks like I've got log files where a log block starts arbitrarily
+         * without a `Log opened' statement, but not within a log block, i.e. we
+         * get conversation hapenning right after a `Log closed', skipping the
+         * `Log open' statement. Not sure if irssi is to blame here, or if I had
+         * actually attempted a merge before with a buggy version of this
+         * program. But still it's good to have a check for this and perhaps
+         * TODO: Do not bail out here, since the situation is clear. So either
+         * skip this block or assume the date and time information from the
+         * `Log closed' line to be the date and time of current log block.
+         */
+        if (compare_headers(buffer0, buffer1, &res) != 0) {
+            /* Whoops! The function got bad headers to compare.
+             * Bail out, this file is clearly corrupted. */
+            return -1;
+        }
+
+        /* TODO: We need better error reporting, so start counting lines. */
 
         if (res > 0) {
             fprintf(dest, "%s\n", buffer0);  // TODO: Should this be taken care of by copy_log[block]()?
@@ -181,7 +198,16 @@ void copy_log(FILE* src, FILE* dest, char* buffer) {
     }
 }
 
-double compare_headers(const char* head0, const char* head1) {
+int compare_headers(const char* head0, const char* head1, double* diff) {
+    if (strncmp(head0, "--- Log o", 9) || strncmp(head1, "--- Log o", 9)) {
+        /* Quick check to see if we were actually passed the correct statement
+         * containing the `Log opened' date and time information. So if any of
+         * the above conditions evaluate to non-zero, we're definitely reading
+         * the wrong line and hence it'll be impossible to extract any useful
+         * date and time information in order to compare them. */
+        return -1;
+    }
+
     char date_buffer[DATE_BUFFER_LENGTH];
     time_t date0, date1;
 
@@ -196,7 +222,9 @@ double compare_headers(const char* head0, const char* head1) {
     strcpy(date_buffer, head1 + DATE_OFFSET);
     date1 = to_seconds(date_buffer, DATE_FORMAT);
 
-    return difftime(date1, date0);
+    *diff = difftime(date1, date0);
+
+    return 0;
 }
 
 time_t to_seconds(const char* date, const char* format) {

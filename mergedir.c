@@ -90,7 +90,7 @@ int mergedir(const char* src_path, const char* dest_path,
                 sprintf(temp_file, "%s/%s", dest_path, TEMP_FILENAME);
 
                 if (merge(src_ent, dest_ent, temp_file) == -1)  // Call to provided merging callback function
-                    fprintf(stderr, "Merge failed!");
+                    fprintf(stderr, "Merge failed!\n");
 
                 if (access(temp_file, F_OK) == -1) {
                     // `temp_file` doesn't exist, merge failed
