@@ -83,14 +83,12 @@ int mergedir(const char* src_path, const char* dest_path,
                 errno = 0;  // Reset errno
 
                 // If it already exists, don't create it again
-                // Instead, TODO: Call merging callback function here
-                printf("Merge : %s And %s\n", src_ent, dest_ent);
+                printf("MERGE : %s And %s\n", src_ent, dest_ent);
 
                 char temp_file[PATH_MAX];
                 sprintf(temp_file, "%s/%s", dest_path, TEMP_FILENAME);
 
-                if (merge(src_ent, dest_ent, temp_file) == -1)  // Call to provided merging callback function
-                    fprintf(stderr, "Merge failed!\n");
+                merge(src_ent, dest_ent, temp_file);  // Call to provided merging callback function
 
                 if (access(temp_file, F_OK) == -1) {
                     // `temp_file` doesn't exist, merge failed
@@ -131,7 +129,7 @@ int mergedir(const char* src_path, const char* dest_path,
                 char buf[BUFSIZ];
 
                 // copy `src_ent` file to `dest_ent` file
-                printf("Copy : %s To %s\n", src_ent, dest_ent);
+                printf(" COPY : %s To %s\n", src_ent, dest_ent);
                 while ((n = read(src_fd, buf, BUFSIZ)) > 0)
                     if (write(dest_fd, buf, n) != n) {
                         // `n` bytes were read from `src_fd`, so if all of `n` bytes weren't written to `dest_fd`, some
