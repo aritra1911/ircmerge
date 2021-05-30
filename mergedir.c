@@ -3,7 +3,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <linux/limits.h>  // For PATH_MAX, TODO: Make this platform independent
+#include <limits.h>  // For PATH_MAX, TODO: Make this platform independent
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
